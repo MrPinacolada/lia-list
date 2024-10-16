@@ -1,0 +1,72 @@
+@import "normalize.css";
+
+body {
+  font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  color: black;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+  pointer-events: all;
+}
+
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+}
+
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  overflow-wrap: break-word;
+  margin: 0;
+}
+
+#root,
+#__nuxt {
+  isolation: isolate;
+}
+
+//::-webkit-scrollbar {
+//    width: 8px;
+//}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--sky-200);
+  border-radius: 6px;
+  border: 2px solid transparent;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-color: var(---sky-200) var(--sky-100);
+  }
+}

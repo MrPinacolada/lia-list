@@ -10,7 +10,14 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
+    "@nuxt/fonts": "^0.10.0",
+    "@nuxtjs/google-fonts": "^3.2.0",
+    "firebase": "^10.14.1",
+    "get-sass-vars": "^4.0.2",
+    "normalize.css": "^8.0.1",
     "nuxt": "^3.13.0",
+    "sass": "^1.79.5",
+    "sass-loader": "^16.0.2",
     "vue": "latest",
     "vue-router": "latest"
   }
