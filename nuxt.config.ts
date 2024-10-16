@@ -20,9 +20,6 @@ export default defineNuxtConfig({
       "DM+Sans": "200..700",
     },
   },
-  router: {
-    base: "/lia-list/",
-  },
   target: "static",
   ssr: false,
 });
