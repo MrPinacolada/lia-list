@@ -1,9 +1,10 @@
 export default defineNuxtConfig({
   app: {
-    baseURL: "/lia-list/",
-    head: {
-      title: "Lia list",
-    },
+    baseURL: "/lia-list/", 
+    buildAssetsDir: "/lia-list/_nuxt/", 
+  },
+  router: {
+    base: "/lia-list/", 
   },
   components: [
     {
