@@ -31,6 +31,9 @@
       </div>
       <button @click="addRow">Add Row</button>
     </section>
+    <div v-if="isLoader" class="loader animate__animated animate__fadeIn">
+      <span class="spinner"></span>
+    </div>
   </main>
 </template>
 
@@ -45,6 +48,8 @@ import {
   collection,
   deleteDoc,
 } from "firebase/firestore";
+
+const isLoader = ref(false);
 
 const firebaseConfig = {
   apiKey: "AIzaSyCdmZ-5JPXu13Nd5wdY9uGF_yFpX_JiiVI",
@@ -109,8 +114,6 @@ const getCheckboxStyle = (colIndex: number) => ({
   "--checked-color": colors[colIndex],
 });
 
-
-
 const saveRowToDB = async (row: {
   title: string;
   data: Record<string, boolean>;
@@ -134,6 +137,7 @@ const updateRowInDB = async (
 };
 
 const fetchRowsFromDB = async () => {
+  isLoader.value = true;
   try {
     const querySnapshot = await getDocs(collection(db, "rows"));
     rows.value = querySnapshot.docs.map(
@@ -141,6 +145,8 @@ const fetchRowsFromDB = async () => {
     );
   } catch (error) {
     console.error("Error fetching rows:", error);
+  } finally {
+    isLoader.value = false;
   }
 };
 
@@ -151,11 +157,40 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .lia-main {
+  position: relative;
   width: 100dvw;
   height: 100dvh;
   padding: 30px;
   margin: 0;
+  .loader {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(56, 54, 54, 0.441);
+    opacity: 0.3;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 5px solid #fff;
+      border-bottom-color: transparent;
+      border-radius: 50%;
+      display: inline-block;
+      box-sizing: border-box;
+      animation: rotation 1s linear infinite;
+    }
 
+    @keyframes rotation {
+      0% {
+        transform: rotate(0deg);
+      }
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+  }
   .list {
     .table-wrapper {
       width: 100%;
