@@ -109,6 +109,8 @@ const getCheckboxStyle = (colIndex: number) => ({
   "--checked-color": colors[colIndex],
 });
 
+
+
 const saveRowToDB = async (row: {
   title: string;
   data: Record<string, boolean>;
