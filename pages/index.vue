@@ -16,32 +16,35 @@
     </div>
     <section class="list">
       <div class="table-wrapper">
-        <table>
-          <thead>
-            <tr>
-              <th class="sticky-column">Title</th>
-              <th v-for="(date, index) in dates" :key="date">{{ date }}</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(row, rowIndex) in rows" :key="rowIndex">
-              <td class="sticky-column">{{ row.title }}</td>
-              <td v-for="(date, colIndex) in dates" :key="date">
-                <input
-                  type="checkbox"
-                  v-model="row.data[date]"
-                  class="checkbox"
-                  :style="getCheckboxStyle(colIndex)"
-                  @change="updateRowInDB(row)"
-                />
-              </td>
-              <td>
-                <button @click="removeRow(rowIndex)">Delete</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <DataTable :value="rows" scrollable showGridlines scrollHeight="500px">
+          <!-- Column for Titles -->
+          <Column field="title" header="Title" frozen></Column>
+
+          <!-- Dynamic Columns for Dates -->
+          <Column
+            v-for="(date, index) in dates"
+            :key="date"
+            :field="'data[' + date + ']'"
+            :header="getDayFromDate(date)"
+          >
+            <template #body="slotProps">
+              <input
+                type="checkbox"
+                v-model="slotProps.data.data[date]"
+                class="checkbox"
+                :style="getCheckboxStyle(index)"
+                @change="updateRowInDB(slotProps.data)"
+              />
+            </template>
+          </Column>
+
+          <!-- Actions Column -->
+          <Column header="Actions">
+            <template #body="slotProps">
+              <button @click="removeRow(slotProps.index)">Delete</button>
+            </template>
+          </Column>
+        </DataTable>
       </div>
       <button @click="addRow">Add Row</button>
     </section>
@@ -62,8 +65,6 @@ import {
   collection,
   deleteDoc,
 } from "firebase/firestore";
-
-
 
 // Интерфейс для строки таблицы
 interface Row {
@@ -200,6 +201,10 @@ const fetchRowsFromDB = async (): Promise<void> => {
   }
 };
 
+const getDayFromDate = (dateString: string): string => {
+  return dateString.split(".")[0]; // Разделяем строку по точке и берем первый элемент
+};
+
 // const convertOldDataToNew = (oldData: OldDataFormat): Row => {
 //   const today = new Date();
 //   const month = String(today.getMonth() + 1).padStart(2, "0"); // Текущий месяц
@@ -242,7 +247,6 @@ watch(pickedDate, fetchRowsFromDB);
 
 // Выполнение кода при монтировании компонента
 onMounted(fetchRowsFromDB);
-
 </script>
 
 <style scoped lang="scss">
@@ -250,11 +254,12 @@ onMounted(fetchRowsFromDB);
   position: relative;
   width: 100dvw;
   height: fit-content;
-  max-height: 100dvh;
   padding: 30px;
   margin: 0;
+  overflow: hidden;
+
   .data-picker {
-    max-width: 80%;
+    max-width: 100%;
     margin-bottom: 20px;
   }
   .loader {
@@ -289,31 +294,7 @@ onMounted(fetchRowsFromDB);
   .list {
     .table-wrapper {
       width: 100%;
-      overflow-x: auto;
-    }
-
-    table {
-      width: max-content;
-      border-collapse: collapse;
-    }
-
-    th,
-    td {
-      border: 1px solid #ccc;
-      padding: 5px;
-      text-align: center;
-      white-space: nowrap;
-    }
-
-    thead {
-      background-color: #f5f5f5;
-    }
-
-    .sticky-column {
-      position: sticky;
-      left: 0;
-      background-color: #fff;
-      z-index: 2;
+      // overflow-x: auto;
     }
 
     button {
