@@ -1,5 +1,19 @@
 <template>
   <main class="lia-main">
+    <div class="data-picker">
+      <FloatLabel variant="on">
+        <DatePicker
+          v-model="pickedDate"
+          showIcon
+          fluid
+          iconDisplay="input"
+          inputId="on_label"
+          view="month"
+          dateFormat="mm/yy"
+        />
+        <label for="on_label">Pick a date</label>
+      </FloatLabel>
+    </div>
     <section class="list">
       <div class="table-wrapper">
         <table>
@@ -19,7 +33,7 @@
                   v-model="row.data[date]"
                   class="checkbox"
                   :style="getCheckboxStyle(colIndex)"
-                  @change="updateRowInDB(row, rowIndex)"
+                  @change="updateRowInDB(row)"
                 />
               </td>
               <td>
@@ -38,7 +52,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, watch } from "vue";
 import { initializeApp } from "firebase/app";
 import {
   getFirestore,
@@ -49,7 +63,19 @@ import {
   deleteDoc,
 } from "firebase/firestore";
 
-const isLoader = ref(false);
+
+
+// Интерфейс для строки таблицы
+interface Row {
+  title: string;
+  data: { [date: string]: boolean }; // объект, где ключи - даты, значения - булевы флаги (чекбоксы)
+  month: string;
+  year: string;
+}
+
+const isLoader = ref(false); // индикатор загрузки
+const pickedDate = ref<Date | null>(new Date()); // выбранная дата (начальная установка - текущая дата)
+const rows = ref<Row[]>([]); // массив строк таблицы
 
 const firebaseConfig = {
   apiKey: "AIzaSyCdmZ-5JPXu13Nd5wdY9uGF_yFpX_JiiVI",
@@ -61,15 +87,17 @@ const firebaseConfig = {
   measurementId: "G-F24TS1YEHD",
 };
 
+// Инициализация Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const getMonthDates = () => {
+// Функция для получения дат текущего месяца
+const getMonthDates = (): string[] => {
   const dates = [];
   const today = new Date();
   const month = today.getMonth() + 1;
-
   const daysInMonth = new Date(today.getFullYear(), month, 0).getDate();
+
   for (let day = 1; day <= daysInMonth; day++) {
     dates.push(
       `${String(day).padStart(2, "0")}.${String(month).padStart(2, "0")}`
@@ -78,7 +106,8 @@ const getMonthDates = () => {
   return dates;
 };
 
-const getRandomColor = () => {
+// Генерация случайного цвета для чекбоксов
+const getRandomColor = (): string => {
   const letters = "0123456789ABCDEF";
   let color = "#";
   for (let i = 0; i < 6; i++) {
@@ -87,62 +116,83 @@ const getRandomColor = () => {
   return color;
 };
 
-const dates = getMonthDates();
-const colors = dates.map(() => getRandomColor());
+const dates = getMonthDates(); // массив дат месяца
+const colors = dates.map(() => getRandomColor()); // цвета для чекбоксов
 
-const rows = ref<{ title: string; data: Record<string, boolean> }[]>([]);
-
-const addRow = async () => {
+// Добавление новой строки
+const addRow = async (): Promise<void> => {
   const title = prompt("Enter title for the row:");
-  if (title) {
-    const newRow = {
+  if (title && pickedDate.value) {
+    const [month, year] = pickedDate.value
+      .toLocaleDateString("en-GB", {
+        month: "2-digit",
+        year: "numeric",
+      })
+      .split("/");
+
+    const newRow: Row = {
       title,
       data: Object.fromEntries(dates.map((date) => [date, false])),
+      month: month as string,
+      year: year as string,
     };
+
     rows.value.push(newRow);
-    await saveRowToDB(newRow);
+    await saveRowToDB(newRow, month, year);
   }
 };
 
-const removeRow = async (index: number) => {
+// Удаление строки
+const removeRow = async (index: number): Promise<void> => {
   const row = rows.value[index];
-  await deleteDoc(doc(db, "rows", row.title));
+  await deleteDoc(doc(db, `rows/${row.year}/${row.month}`, row.title));
   rows.value.splice(index, 1);
 };
 
-const getCheckboxStyle = (colIndex: number) => ({
+// Получение стиля для чекбоксов
+const getCheckboxStyle = (colIndex: number): { [key: string]: string } => ({
   "--checked-color": colors[colIndex],
 });
 
-const saveRowToDB = async (row: {
-  title: string;
-  data: Record<string, boolean>;
-}) => {
+// Сохранение строки в Firebase
+const saveRowToDB = async (
+  row: Row,
+  month: string,
+  year: string
+): Promise<void> => {
   try {
-    await setDoc(doc(db, "rows", row.title), row);
+    await setDoc(doc(db, `rows/${year}/${month}`, row.title), row);
   } catch (error) {
     console.error("Error saving row:", error);
   }
 };
 
-const updateRowInDB = async (
-  row: { title: string; data: Record<string, boolean> },
-  index: number
-) => {
+// Обновление строки в Firebase
+const updateRowInDB = async (row: Row): Promise<void> => {
   try {
-    await saveRowToDB(row);
+    await saveRowToDB(row, row.month, row.year);
   } catch (error) {
     console.error("Error updating row:", error);
   }
 };
 
-const fetchRowsFromDB = async () => {
+// Получение строк из Firebase
+const fetchRowsFromDB = async (): Promise<void> => {
+  if (!pickedDate.value) return;
+
+  const [month, year] = pickedDate.value
+    .toLocaleDateString("en-GB", {
+      month: "2-digit",
+      year: "numeric",
+    })
+    .split("/");
+
   isLoader.value = true;
   try {
-    const querySnapshot = await getDocs(collection(db, "rows"));
-    rows.value = querySnapshot.docs.map(
-      (doc) => doc.data() as { title: string; data: Record<string, boolean> }
+    const querySnapshot = await getDocs(
+      collection(db, `rows/${year}/${month}`)
     );
+    rows.value = querySnapshot.docs.map((doc) => doc.data() as Row);
   } catch (error) {
     console.error("Error fetching rows:", error);
   } finally {
@@ -150,20 +200,65 @@ const fetchRowsFromDB = async () => {
   }
 };
 
-onMounted(() => {
-  fetchRowsFromDB();
-});
+// const convertOldDataToNew = (oldData: OldDataFormat): Row => {
+//   const today = new Date();
+//   const month = String(today.getMonth() + 1).padStart(2, "0"); // Текущий месяц
+//   const year = String(today.getFullYear()); // Текущий год
+
+//   return {
+//     ...oldData, // Переносим данные и заголовок
+//     month, // Добавляем текущий месяц
+//     year, // Добавляем текущий год
+//   };
+// };
+
+// const migrateOldData = async () => {
+//   try {
+//     // Извлечение старых данных
+//     const oldQuerySnapshot = await getDocs(collection(db, "rows"));
+
+//     // Обрабатываем каждый документ старой коллекции
+//     for (const docSnap of oldQuerySnapshot.docs) {
+//       const oldData = docSnap.data() as OldDataFormat;
+//       const newData = convertOldDataToNew(oldData); // Преобразование
+
+//       const { month, year, title } = newData;
+
+//       // Сохраняем данные по новому пути
+//       await setDoc(doc(db, `rows/${year}/${month}`, title), newData);
+
+//       // Удаляем старый документ
+//       await deleteDoc(doc(db, "rows", docSnap.id));
+//     }
+
+//     console.log("Migration completed successfully!");
+//   } catch (error) {
+//     console.error("Error during migration:", error);
+//   }
+// };
+
+// Обновление строк при изменении даты
+watch(pickedDate, fetchRowsFromDB);
+
+// Выполнение кода при монтировании компонента
+onMounted(fetchRowsFromDB);
+
 </script>
 
 <style scoped lang="scss">
 .lia-main {
   position: relative;
   width: 100dvw;
-  height: 100dvh;
+  height: fit-content;
+  max-height: 100dvh;
   padding: 30px;
   margin: 0;
+  .data-picker {
+    max-width: 80%;
+    margin-bottom: 20px;
+  }
   .loader {
-    position: absolute;
+    position: fixed;
     inset: 0;
     background-color: rgba(56, 54, 54, 0.441);
     opacity: 0.3;
@@ -205,7 +300,7 @@ onMounted(() => {
     th,
     td {
       border: 1px solid #ccc;
-      padding: 10px;
+      padding: 5px;
       text-align: center;
       white-space: nowrap;
     }
