@@ -75,7 +75,7 @@ interface Row {
 }
 
 const isLoader = ref(false); // индикатор загрузки
-const pickedDate = ref<Date | null>(new Date()); // выбранная дата (начальная установка - текущая дата)
+const pickedDate = ref<Date>(new Date()); // выбранная дата (начальная установка - текущая дата)
 const rows = ref<Row[]>([]); // массив строк таблицы
 
 const firebaseConfig = {
@@ -95,7 +95,7 @@ const db = getFirestore(app);
 // Функция для получения дат текущего месяца
 const getMonthDates = (): string[] => {
   const dates = [];
-  const today = new Date();
+  const today = pickedDate.value;
   const month = today.getMonth() + 1;
   const daysInMonth = new Date(today.getFullYear(), month, 0).getDate();
 
@@ -117,8 +117,8 @@ const getRandomColor = (): string => {
   return color;
 };
 
-const dates = getMonthDates(); // массив дат месяца
-const colors = dates.map(() => getRandomColor()); // цвета для чекбоксов
+const dates = ref<string[]>([]); // массив дат месяца
+const colors = ref<string[]>([]); // цвета для чекбоксов
 
 // Добавление новой строки
 const addRow = async (): Promise<void> => {
@@ -133,7 +133,7 @@ const addRow = async (): Promise<void> => {
 
     const newRow: Row = {
       title,
-      data: Object.fromEntries(dates.map((date) => [date, false])),
+      data: Object.fromEntries(dates.value.map((date) => [date, false])),
       month: month as string,
       year: year as string,
     };
@@ -152,7 +152,7 @@ const removeRow = async (index: number): Promise<void> => {
 
 // Получение стиля для чекбоксов
 const getCheckboxStyle = (colIndex: number): { [key: string]: string } => ({
-  "--checked-color": colors[colIndex],
+  "--checked-color": colors.value[colIndex],
 });
 
 // Сохранение строки в Firebase
@@ -194,6 +194,7 @@ const fetchRowsFromDB = async (): Promise<void> => {
       collection(db, `rows/${year}/${month}`)
     );
     rows.value = querySnapshot.docs.map((doc) => doc.data() as Row);
+    console.log("rows.value: ", rows.value);
   } catch (error) {
     console.error("Error fetching rows:", error);
   } finally {
@@ -242,11 +243,17 @@ const getDayFromDate = (dateString: string): string => {
 //   }
 // };
 
+const updateCalendar = () => {
+  dates.value = getMonthDates();
+  colors.value = dates.value.map(() => getRandomColor());
+  fetchRowsFromDB();
+};
+
 // Обновление строк при изменении даты
-watch(pickedDate, fetchRowsFromDB);
+watch(pickedDate, updateCalendar);
 
 // Выполнение кода при монтировании компонента
-onMounted(fetchRowsFromDB);
+onMounted(updateCalendar);
 </script>
 
 <style scoped lang="scss">
